@@ -1,0 +1,1008 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Math Battle: Weights & Scales</title>
+    <style>
+        :root {
+            --bg-color: #2c3e50;
+            --box-bg: #ecf0f1;
+            --border-color: #27ae60;
+            --text-color: #2c3e50;
+            --hp-green: #2ecc71;
+            --hp-yellow: #f1c40f;
+            --hp-red: #e74c3c;
+            --ui-blue: #2980b9;
+        }
+
+        body {
+            font-family: 'Segoe UI', 'Verdana', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+
+        #game-container {
+            width: 100%;
+            max-width: 600px;
+            background-color: var(--box-bg);
+            border: 8px solid var(--border-color);
+            border-radius: 15px;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 15px 50px rgba(0,0,0,0.8);
+        }
+
+        .screen {
+            display: none;
+            flex-direction: column;
+            height: 750px;
+            padding: 20px;
+            background-image: linear-gradient(#e8f8f5, #a3e4d7);
+        }
+
+        .active-screen { display: flex; }
+
+        /* Battle UI */
+        .battle-zone {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 20px;
+            border: 3px solid #bdc3c7;
+            border-radius: 10px;
+            margin-bottom: 10px;
+            background-color: #fff;
+            box-shadow: inset 0 0 10px rgba(0,0,0,0.05);
+        }
+
+        .legendary-zone {
+            border-color: #e67e22;
+            background-color: #fdebd0;
+        }
+
+        .pokemon-info {
+            flex-grow: 1;
+            font-weight: bold;
+            font-size: 1.1rem;
+            text-transform: uppercase;
+        }
+
+        .pokemon-sprite {
+            width: 96px;
+            height: 96px;
+            image-rendering: pixelated;
+        }
+
+        .hp-bar-container {
+            width: 100%;
+            height: 14px;
+            background-color: #7f8c8d;
+            border: 2px solid #2c3e50;
+            border-radius: 10px;
+            overflow: hidden;
+            margin-top: 5px;
+            position: relative;
+        }
+
+        .hp-bar {
+            height: 100%;
+            background-color: var(--hp-green);
+            transition: width 0.3s ease, background-color 0.3s ease;
+        }
+        
+        .hp-text {
+            position: absolute;
+            top: -2px;
+            right: 5px;
+            font-size: 0.75rem;
+            color: white;
+            text-shadow: 1px 1px 0 #000;
+        }
+
+        /* Timer/Power Bar */
+        #timer-container {
+            width: 100%;
+            height: 16px;
+            background-color: #bdc3c7;
+            margin-bottom: 5px;
+            border-radius: 8px;
+            overflow: hidden;
+            border: 2px solid #95a5a6;
+            position: relative;
+        }
+
+        #timer-bar {
+            height: 100%;
+            background-color: var(--hp-green);
+            width: 100%;
+            transition: width 0.1s linear, background-color 0.3s ease;
+        }
+        
+        #timer-text {
+            position: absolute;
+            width: 100%;
+            text-align: center;
+            top: 0;
+            font-size: 0.8rem;
+            font-weight: bold;
+            line-height: 16px;
+            color: #000;
+        }
+
+        /* Questions & Hints */
+        #question-zone {
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            font-size: 1.2rem;
+            font-weight: bold;
+            padding: 15px;
+            background-color: #fff;
+            border-radius: 8px;
+            border: 4px solid var(--ui-blue);
+            margin-bottom: 5px;
+            box-shadow: 4px 4px 0px rgba(0,0,0,0.1);
+            line-height: 1.4;
+        }
+
+        #hint-zone {
+            display: none;
+            background-color: #fef9e7;
+            border: 2px dashed #f1c40f;
+            color: #d35400;
+            padding: 8px;
+            border-radius: 8px;
+            font-size: 0.95rem;
+            font-weight: bold;
+            text-align: center;
+            margin-bottom: 10px;
+        }
+
+        #answers-zone {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+
+        button.answer-btn {
+            padding: 12px;
+            font-size: 1.05rem;
+            font-weight: bold;
+            background-color: #fff;
+            border: 3px solid var(--ui-blue);
+            color: var(--text-color);
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.1s;
+            box-shadow: 3px 3px 0px var(--ui-blue);
+        }
+
+        button.answer-btn:hover:not(:disabled) {
+            transform: translate(2px, 2px);
+            box-shadow: 1px 1px 0px var(--ui-blue);
+            background-color: #d6eaf8;
+        }
+
+        button.answer-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: 3px 3px 0px var(--ui-blue);
+            background-color: #eee;
+        }
+
+        button.wrong-answer {
+            background-color: #fadbd8 !important;
+            border-color: #e74c3c !important;
+            color: #c0392b !important;
+            text-decoration: line-through;
+        }
+
+        button.skip-btn {
+            background-color: #34495e;
+            color: white;
+            border-color: #2c3e50;
+            box-shadow: 3px 3px 0px #2c3e50;
+            grid-column: span 2;
+        }
+        
+        button.skip-btn:hover:not(:disabled) {
+            background-color: #2c3e50;
+        }
+
+        /* Menus */
+        .collection-grid, .hof-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            overflow-y: auto;
+            flex-grow: 1;
+            padding-right: 5px;
+        }
+
+        .collection-item {
+            background: #fff;
+            border: 3px solid #ccc;
+            border-radius: 10px;
+            padding: 8px;
+            text-align: center;
+            cursor: pointer;
+            box-shadow: 3px 3px 0px #ccc;
+        }
+
+        .collection-item img, .hof-card img {
+            width: 70px;
+            height: 70px;
+            image-rendering: pixelated;
+        }
+
+        .collection-item.active-selection {
+            border-color: var(--border-color);
+            box-shadow: 3px 3px 0px var(--border-color);
+            background-color: #e8f8f5;
+        }
+
+        .collection-item.fainted {
+            border-color: #7f8c8d;
+            box-shadow: none;
+            background-color: #ecf0f1;
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .collection-item.fainted img {
+            filter: grayscale(100%);
+        }
+
+        .fainted-text {
+            color: #e74c3c;
+            font-weight: bold;
+            font-size: 0.7rem;
+        }
+
+        .action-btn {
+            padding: 15px;
+            font-size: 1.2rem;
+            background-color: var(--border-color);
+            color: white;
+            border: 3px solid #1e8449;
+            border-radius: 8px;
+            cursor: pointer;
+            margin-top: 15px;
+            font-weight: bold;
+            box-shadow: 4px 4px 0px #1e8449;
+        }
+        
+        .action-btn:active {
+            transform: translate(4px, 4px);
+            box-shadow: 0px 0px 0px #1e8449;
+        }
+
+        .log {
+            text-align: center;
+            font-weight: bold;
+            color: var(--ui-blue);
+            min-height: 24px;
+            margin-bottom: 5px;
+            font-size: 1rem;
+        }
+
+        #victory-screen {
+            background-image: linear-gradient(#f1c40f, #e67e22);
+            color: #fff;
+            text-align: center;
+        }
+
+        #game-over-screen {
+            background-image: linear-gradient(#e74c3c, #c0392b);
+            color: #fff;
+            text-align: center;
+        }
+
+        @keyframes shake {
+            0% { transform: translate(1px, 1px) rotate(0deg); }
+            20% { transform: translate(-3px, 0px) rotate(1deg); }
+            40% { transform: translate(1px, -1px) rotate(1deg); }
+            60% { transform: translate(-3px, 1px) rotate(0deg); }
+            80% { transform: translate(-1px, -1px) rotate(1deg); }
+            100% { transform: translate(1px, -2px) rotate(-1deg); }
+        }
+        .shake { animation: shake 0.4s; }
+        
+        @keyframes blink {
+            0%, 100% { opacity: 1; filter: brightness(1); }
+            50% { opacity: 0.5; filter: brightness(2) sepia(1) hue-rotate(-50deg) saturate(5); }
+        }
+        .damage-blink { animation: blink 0.2s 3; }
+        
+        .boss-intro { color: #e74c3c; font-weight: 900; font-size: 1.2rem; text-shadow: 1px 1px 0 #fff;}
+
+    </style>
+</head>
+<body>
+
+<div id="game-container">
+    <div id="collection-screen" class="screen active-screen">
+        <div style="text-align: center; margin-bottom: 15px;">
+            <h2 style="margin:0; color: var(--ui-blue);">Pokémon Base: Weights & Scales</h2>
+            <p style="margin:5px 0; font-size:0.9rem; font-weight:bold;">Manage your HP, defeat opponents & evolve!</p>
+            <p style="margin:5px 0; font-size:0.9rem; color:#1e8449;" id="q-tracker">Questions left: 50 / 50</p>
+        </div>
+        <div id="collection-grid" class="collection-grid"></div>
+        <button class="action-btn" onclick="startBattle()" id="start-btn">Battle!</button>
+    </div>
+
+    <div id="battle-screen" class="screen">
+        <div class="log" id="battle-log">A wild opponent appeared!</div>
+        
+        <div class="battle-zone" id="opp-zone">
+            <div class="pokemon-info">
+                <div id="opp-name">Opponent</div>
+                <div class="hp-bar-container">
+                    <div id="opp-hp" class="hp-bar" style="width: 100%;"></div>
+                    <div class="hp-text" id="opp-hp-text">3/3</div>
+                </div>
+            </div>
+            <img class="pokemon-sprite" id="opp-sprite" src="" alt="Opponent">
+        </div>
+
+        <div id="timer-container">
+            <div id="timer-bar"></div>
+            <div id="timer-text">Fast Answer = 3 Damage!</div>
+        </div>
+
+        <div id="question-zone">Loading...</div>
+        <div id="hint-zone">Hint goes here!</div>
+
+        <div class="battle-zone">
+            <img class="pokemon-sprite" id="player-sprite" src="" alt="Player">
+            <div class="pokemon-info">
+                <div id="player-name">Player</div>
+                <div class="hp-bar-container">
+                    <div id="player-hp" class="hp-bar" style="width: 100%;"></div>
+                    <div class="hp-text" id="player-hp-text">3/3</div>
+                </div>
+            </div>
+        </div>
+
+        <div id="answers-zone"></div>
+    </div>
+
+    <div id="victory-screen" class="screen">
+        <h1 style="font-size: 2rem; text-shadow: 2px 2px 4px rgba(0,0,0,0.5); margin-bottom: 5px;">Hall of Fame</h1>
+        <p style="margin-top:0; font-size: 1rem;">Congratulations! You completed all 50 weight questions!</p>
+        <div id="hof-grid" class="collection-grid"></div>
+        <button class="action-btn" style="background-color: #fff; color: #e67e22;" onclick="location.reload()">Play Again</button>
+    </div>
+
+    <div id="game-over-screen" class="screen">
+        <h1 style="font-size: 2rem; text-shadow: 2px 2px 4px rgba(0,0,0,0.5); margin-bottom: 5px;">Game Over</h1>
+        <p style="margin-top:0; font-size: 1rem;">All your Pokémon have fainted...</p>
+        <p style="margin-top:0; font-size: 1rem;">Revise kilograms (kg) and grams (g), then try again!</p>
+        <button class="action-btn" style="background-color: #fff; color: #c0392b;" onclick="location.reload()">Restart</button>
+    </div>
+</div>
+
+<script>
+    let audioCtx;
+    function initAudio() {
+        if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+    }
+    function playTone(freq, type, duration, vol=0.1) {
+        if(!audioCtx) return;
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = type;
+        osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+        gain.gain.setValueAtTime(vol, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + duration);
+        osc.connect(gain); gain.connect(audioCtx.destination);
+        osc.start(); osc.stop(audioCtx.currentTime + duration);
+    }
+    const sfx = {
+        attackFast: () => { playTone(800, 'square', 0.1); setTimeout(() => playTone(1200, 'square', 0.15), 100); },
+        attackSlow: () => { playTone(500, 'square', 0.2); },
+        hit: () => { playTone(150, 'sawtooth', 0.3, 0.2); },
+        win: () => { [400, 500, 600, 800].forEach((f, i) => setTimeout(() => playTone(f, 'square', 0.2), i * 150)); },
+        evolve: () => { [300, 400, 500, 600, 700, 800, 1000].forEach((f, i) => setTimeout(() => playTone(f, 'sine', 0.3), i * 150)); },
+        boss: () => { [200, 180, 150, 200].forEach((f, i) => setTimeout(() => playTone(f, 'sawtooth', 0.3, 0.2), i * 300)); },
+        faint: () => { playTone(100, 'sine', 0.8, 0.3); }
+    };
+
+    const getSpriteUrl = (id) => `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${id}.png`;
+
+    const speciesData = {
+        "Bulbasaur": { id: 1, next: "Ivysaur", winsNeeded: 2, type: 'normal' },
+        "Ivysaur": { id: 2, next: "Venusaur", winsNeeded: 2, type: 'normal' },
+        "Venusaur": { id: 3, next: null, winsNeeded: null, type: 'normal' },
+        "Charmander": { id: 4, next: "Charmeleon", winsNeeded: 2, type: 'normal' },
+        "Charmeleon": { id: 5, next: "Charizard", winsNeeded: 2, type: 'normal' },
+        "Charizard": { id: 6, next: null, winsNeeded: null, type: 'normal' },
+        "Squirtle": { id: 7, next: "Wartortle", winsNeeded: 2, type: 'normal' },
+        "Wartortle": { id: 8, next: "Blastoise", winsNeeded: 2, type: 'normal' },
+        "Blastoise": { id: 9, next: null, winsNeeded: null, type: 'normal' },
+        "Pikachu": { id: 25, next: "Raichu", winsNeeded: 2, type: 'normal' },
+        "Raichu": { id: 26, next: null, winsNeeded: null, type: 'normal' },
+        "Riolu": { id: 447, next: "Lucario", winsNeeded: 2, type: 'normal' },
+        "Lucario": { id: 448, next: null, winsNeeded: null, type: 'normal' },
+        "Rowlet": { id: 722, next: "Dartrix", winsNeeded: 2, type: 'normal' },
+        "Dartrix": { id: 723, next: "Decidueye", winsNeeded: 2, type: 'normal' },
+        "Decidueye": { id: 724, next: null, winsNeeded: null, type: 'normal' },
+        "Rockruff": { id: 744, next: "Lycanroc", winsNeeded: 2, type: 'normal' },
+        "Lycanroc": { id: 745, next: null, winsNeeded: null, type: 'normal' },
+        "Froakie": { id: 656, next: "Frogadier", winsNeeded: 2, type: 'normal' },
+        "Frogadier": { id: 657, next: "Greninja", winsNeeded: 2, type: 'normal' },
+        "Greninja": { id: 658, next: null, winsNeeded: null, type: 'normal' },
+        "Pidgey": { id: 16, next: "Pidgeot", winsNeeded: 2, type: 'normal' },
+        "Pidgeot": { id: 18, next: null, winsNeeded: null, type: 'normal' },
+        "Rattata": { id: 19, next: "Raticate", winsNeeded: 2, type: 'normal' },
+        "Raticate": { id: 20, next: null, winsNeeded: null, type: 'normal' },
+        "Geodude": { id: 74, next: "Golem", winsNeeded: 2, type: 'normal' },
+        "Golem": { id: 76, next: null, winsNeeded: null, type: 'normal' },
+        "Zubat": { id: 41, next: "Golbat", winsNeeded: 2, type: 'normal' },
+        "Golbat": { id: 42, next: null, winsNeeded: null, type: 'normal' },
+        "Articuno": { id: 144, next: null, winsNeeded: null, type: 'legendary' },
+        "Zapdos": { id: 145, next: null, winsNeeded: null, type: 'legendary' },
+        "Moltres": { id: 146, next: null, winsNeeded: null, type: 'legendary' },
+        "Mewtwo": { id: 150, next: "Mega Mewtwo X", winsNeeded: 2, type: 'legendary' },
+        "Mega Mewtwo X": { id: 10043, next: null, winsNeeded: null, type: 'legendary' },
+        "Mew": { id: 151, next: null, winsNeeded: null, type: 'legendary' },
+        "Zygarde": { id: 718, next: null, winsNeeded: null, type: 'legendary' },
+        "Keldeo": { id: 647, next: null, winsNeeded: null, type: 'legendary' },
+        "Zekrom": { id: 644, next: null, winsNeeded: null, type: 'legendary' },
+        "Kyurem": { id: 646, next: null, winsNeeded: null, type: 'legendary' },
+        "Darkrai": { id: 491, next: null, winsNeeded: null, type: 'legendary' },
+        "Arceus": { id: 493, next: null, winsNeeded: null, type: 'legendary' }
+    };
+
+    let normalWilds = [
+        "Bulbasaur", "Charmander", "Squirtle", "Riolu", "Rowlet", 
+        "Rockruff", "Froakie", "Pidgey", "Rattata", "Zubat", "Geodude"
+    ]; 
+    normalWilds = [...normalWilds, ...normalWilds, ...normalWilds, "Riolu", "Rowlet"].sort(() => Math.random() - 0.5);
+    
+    let legendaryWilds = [
+        "Articuno", "Zapdos", "Moltres", "Mewtwo", "Mew", 
+        "Zygarde", "Keldeo", "Zekrom", "Kyurem", "Darkrai", "Arceus"
+    ].sort(() => Math.random() - 0.5);
+
+    // 40 Normal Math Questions
+    let normalQuestions = [
+        { q: "1 kg = [ ] g", correct: "1000", wrongs: ["100", "10", "10000"] },
+        { q: "2000 g = [ ] kg", correct: "2", wrongs: ["20", "200", "0.2"] },
+        { q: "3 kg = [ ] g", correct: "3000", wrongs: ["300", "30", "3"] },
+        { q: "4000 g = [ ] kg", correct: "4", wrongs: ["40", "400", "40000"] },
+        { q: "An apple weighs about 150 [ ]", correct: "g", wrongs: ["kg", "cm", "mL"] },
+        { q: "A large watermelon weighs about 3 [ ]", correct: "kg", wrongs: ["g", "m", "L"] },
+        { q: "An adult dog weighs about 15 [ ]", correct: "kg", wrongs: ["g", "km", "L"] },
+        { q: "A paperclip weighs about 1 [ ]", correct: "g", wrongs: ["kg", "mm", "mL"] },
+        { q: "1 kg 500 g = [ ] g", correct: "1500", wrongs: ["150", "1050", "15000"] },
+        { q: "2 kg 30 g = [ ] g", correct: "2030", wrongs: ["2300", "230", "2003"] },
+        { q: "3050 g = [ ]", correct: "3 kg 50 g", wrongs: ["3 kg 500 g", "30 kg 5 g", "300 kg 50 g"] },
+        { q: "4500 g = [ ]", correct: "4 kg 500 g", wrongs: ["45 kg", "4 kg 50 g", "40 kg 500 g"] },
+        { q: "Each small mark on the scale is 100 g. The pointer is on the 2nd mark after 1 kg. Weight?", correct: "1 kg 200 g", wrongs: ["1 kg 20 g", "2 kg 100 g", "1200 kg"] },
+        { q: "Each large mark on the scale is 1 kg. The pointer is exactly on the number 5. Weight?", correct: "5000 g", wrongs: ["500 g", "50 g", "5 g"] },
+        { q: "How many grams are in half a kilogram?", correct: "500 g", wrongs: ["50 g", "5 g", "5000 g"] },
+        { q: "A bag of white rice weighs 8 [ ]", correct: "kg", wrongs: ["g", "cm", "L"] },
+        { q: "A bag of potato chips weighs 55 [ ]", correct: "g", wrongs: ["kg", "mm", "mL"] },
+        { q: "2 kg 8 g = [ ] g", correct: "2008", wrongs: ["2080", "2800", "280"] },
+        { q: "6100 g = [ ]", correct: "6 kg 100 g", wrongs: ["6 kg 10 g", "61 kg", "60 kg 100 g"] },
+        { q: "A dictionary weighs about 1 [ ]", correct: "kg", wrongs: ["g", "km", "mL"] },
+        { q: "A slice of bread weighs about 30 [ ]", correct: "g", wrongs: ["kg", "m", "L"] },
+        { q: "Which is the heaviest?", correct: "2 kg", wrongs: ["1500 g", "1 kg 800 g", "1999 g"] },
+        { q: "Which is the lightest?", correct: "800 g", wrongs: ["1 kg", "1 kg 200 g", "950 g"] },
+        { q: "The pointer of a scale is exactly halfway between 0 and 1 kg. What is the reading?", correct: "500 g", wrongs: ["50 g", "1500 g", "0 g"] },
+        { q: "The pointer of a scale is exactly halfway between 2 kg and 3 kg. What is the reading?", correct: "2 kg 500 g", wrongs: ["2 kg 50 g", "3 kg 500 g", "2500 kg"] },
+        { q: "My older brother weighs 32 [ ]", correct: "kg", wrongs: ["g", "cm", "m"] },
+        { q: "My younger sister weighs 20000 [ ]", correct: "g", wrongs: ["kg", "km", "mL"] },
+        { q: "What is the total weight of ten 100 g weights?", correct: "1 kg", wrongs: ["10 kg", "100 kg", "100 g"] },
+        { q: "5 kg 800 g = [ ] g", correct: "5800", wrongs: ["5080", "580", "5008"] },
+        { q: "7020 g = [ ]", correct: "7 kg 20 g", wrongs: ["7 kg 200 g", "70 kg 20 g", "7 kg 2 g"] },
+        { q: "A pencil weighs about 10 [ ]", correct: "g", wrongs: ["kg", "cm", "mL"] },
+        { q: "A car weighs about 1500 [ ]", correct: "kg", wrongs: ["g", "m", "L"] },
+        { q: "3 kg 3 g = [ ] g", correct: "3003", wrongs: ["3300", "3030", "330"] },
+        { q: "9 kg = [ ] g", correct: "9000", wrongs: ["900", "90", "9"] },
+        { q: "A bar of chocolate weighs 100 [ ]", correct: "g", wrongs: ["kg", "cm", "L"] },
+        { q: "Which weight is heavier than 1 kg?", correct: "1050 g", wrongs: ["999 g", "500 g", "80 g"] },
+        { q: "Which weight is lighter than 2 kg?", correct: "1900 g", wrongs: ["2050 g", "2 kg 100 g", "3000 g"] },
+        { q: "Mom bought 2 kg of pork. How many grams is that?", correct: "2000 g", wrongs: ["200 g", "20000 g", "20 g"] },
+        { q: "A cat weighs 4 [ ]", correct: "kg", wrongs: ["g", "m", "mL"] },
+        { q: "8000 g = [ ] kg", correct: "8", wrongs: ["80", "800", "0.8"] }
+    ].sort(() => Math.random() - 0.5); 
+
+    // 10 BOSS Questions
+    let hardQuestions = [
+        { q: "[BOSS] An apple weighs 1 kg 200 g, an orange weighs 800 g. How much do they weigh together?", correct: "2 kg", wrongs: ["1 kg 1000 g", "2 kg 200 g", "2000 kg"] },
+        { q: "[BOSS] Brother weighs 30 kg, younger brother weighs 25000 g. What is their total weight in kg?", correct: "55 kg", wrongs: ["30250 kg", "5.5 kg", "25030 kg"] },
+        { q: "[BOSS] Each large mark on a scale is 1 kg, each small mark is 50 g. The pointer is on the 3rd small mark after 2 kg. Weight?", correct: "2 kg 150 g", wrongs: ["2 kg 30 g", "2 kg 50 g", "2 kg 300 g"] },
+        { q: "[BOSS] Bread weighs 300 g, jam weighs 1 kg 50 g. How much heavier is the jam than the bread?", correct: "750 g", wrongs: ["1 kg 250 g", "1 kg 350 g", "250 g"] },
+        { q: "[BOSS] A watermelon weighs 3 kg 400 g. After eating half (1 kg 700 g), how much is left?", correct: "1700 g", wrongs: ["2 kg", "1 kg 300 g", "2700 g"] },
+        { q: "[BOSS] 1 kg 80 g + 920 g = [ ]", correct: "2 kg", wrongs: ["1 kg 1000 g", "2 kg 80 g", "1000 g"] },
+        { q: "[BOSS] 3 kg - 1 kg 200 g = [ ]", correct: "1 kg 800 g", wrongs: ["2 kg 200 g", "2 kg 800 g", "1 kg 200 g"] },
+        { q: "[BOSS] A scale can measure up to 3 kg. What happens if you put a 3500 g item on it?", correct: "Exceeds capacity", wrongs: ["Shows 3 kg", "Shows 500 g", "Pointer points to 3"] },
+        { q: "[BOSS] There are 5 bags of sugar, each weighing 200 g. What is the total weight?", correct: "1 kg", wrongs: ["100 g", "10 kg", "1000 kg"] },
+        { q: "[BOSS] Which is heavier: 1 kg of iron or 1000 g of cotton?", correct: "Same weight", wrongs: ["Iron is heavier", "Cotton is heavier", "Cannot compare"] }
+    ].sort(() => Math.random() - 0.5); 
+
+    let collection = [{ id: 1, species: "Pikachu", wins: 0, status: 'active', hp: 3, maxHp: 3 }];
+    let activePlayerId = 1;
+    let nextId = 2;
+    let currentOpponent = null;
+    let maxPlayerHP = 3, playerHP = 3;
+    let maxOppHP = 3, oppHP = 3;
+    let currentQuestion = null;
+    let timerInterval;
+    const TIME_LIMIT = 20; 
+    let timeElapsed = 0;
+    let isLegendaryFight = false;
+    let currentAttempts = 0; 
+
+    function switchScreen(screenId) {
+        document.querySelectorAll('.screen').forEach(s => s.classList.remove('active-screen'));
+        document.getElementById(screenId).classList.add('active-screen');
+    }
+
+    function renderCollection() {
+        let totalQ = normalQuestions.length + hardQuestions.length;
+        document.getElementById('q-tracker').innerText = `Questions left: ${totalQ} / 50`;
+        
+        const grid = document.getElementById('collection-grid');
+        grid.innerHTML = '';
+        
+        let activePoke = collection.find(p => p.id === activePlayerId);
+        if (activePoke && activePoke.status === 'fainted') {
+            let nextAlive = collection.find(p => p.status === 'active');
+            if (nextAlive) activePlayerId = nextAlive.id;
+        }
+
+        let allFainted = true;
+
+        collection.forEach(p => {
+            if(p.status === 'active') allFainted = false;
+
+            const data = speciesData[p.species] || { id: 25, type: 'normal' };
+            const div = document.createElement('div');
+            
+            let classNames = ['collection-item'];
+            if(p.id === activePlayerId && p.status === 'active') classNames.push('active-selection');
+            if(p.status === 'fainted') classNames.push('fainted');
+            
+            div.className = classNames.join(' ');
+            if(data.type === 'legendary' && p.status !== 'fainted') div.style.borderColor = '#e67e22';
+            
+            let statusText = p.status === 'fainted' 
+                ? '<div class="fainted-text">Fainted</div>' 
+                : `<div style="font-size: 0.75rem; color: #e74c3c; font-weight: bold;">HP: ${p.hp}/${p.maxHp}</div>
+                   <div style="font-size: 0.7rem; color: #666;">Wins: ${p.wins} ${data.winsNeeded ? `/${data.winsNeeded}` : '(Max Level)'}</div>`;
+
+            div.innerHTML = `
+                <img src="${getSpriteUrl(data.id)}" alt="${p.species}">
+                <div style="font-size: 0.75rem;"><strong>${p.species}</strong></div>
+                ${statusText}
+            `;
+            
+            if(p.status === 'active') {
+                div.onclick = () => { initAudio(); activePlayerId = p.id; renderCollection(); };
+            }
+            grid.appendChild(div);
+        });
+
+        const startBtn = document.getElementById('start-btn');
+        if (totalQ === 0) {
+            startBtn.innerText = "View Hall of Fame";
+            startBtn.onclick = () => triggerVictory();
+        } else if (allFainted) {
+            startBtn.innerText = "Game Over";
+            startBtn.onclick = () => switchScreen('game-over-screen');
+        } else {
+            startBtn.innerText = "Battle!";
+            startBtn.onclick = () => startBattle();
+        }
+    }
+
+    function startBattle() {
+        initAudio(); 
+        let totalQ = normalQuestions.length + hardQuestions.length;
+        if (totalQ === 0) { 
+            triggerVictory(); return; 
+        }
+
+        isLegendaryFight = (Math.random() < 0.20 && hardQuestions.length > 0 && legendaryWilds.length > 0) || (normalWilds.length === 0);
+        
+        if (isLegendaryFight && legendaryWilds.length > 0) {
+            maxOppHP = 6;
+            let index = Math.floor(Math.random() * legendaryWilds.length);
+            let species = legendaryWilds.splice(index, 1)[0];
+            
+            currentOpponent = { species: species, type: 'legendary' };
+            document.getElementById('opp-zone').classList.add('legendary-zone');
+            logMsg(`WARNING! Legendary Pokémon ${species} appeared!`);
+            sfx.boss();
+        } else {
+            maxOppHP = 3;
+            if(normalWilds.length === 0) normalWilds = ["Pidgey", "Rattata", "Zubat"]; // Fallback
+            let index = Math.floor(Math.random() * normalWilds.length);
+            let species = normalWilds.splice(index, 1)[0];
+
+            currentOpponent = { species: species, type: 'normal' };
+            document.getElementById('opp-zone').classList.remove('legendary-zone');
+            logMsg(`Wild ${species} appeared!`);
+        }
+
+        let activePoke = collection.find(p => p.id === activePlayerId);
+        maxPlayerHP = activePoke.maxHp;
+        playerHP = activePoke.hp; 
+        oppHP = maxOppHP;
+
+        updateBattleUI();
+        loadNextQuestion();
+        switchScreen('battle-screen');
+    }
+
+    function startTimer() {
+        clearInterval(timerInterval);
+        timeElapsed = 0;
+        
+        const timerBar = document.getElementById('timer-bar');
+        const timerText = document.getElementById('timer-text');
+        timerBar.style.width = '100%';
+        timerBar.style.backgroundColor = 'var(--hp-green)';
+        timerText.innerText = "Fast Answer = 3 Damage!";
+        
+        timerInterval = setInterval(() => {
+            timeElapsed += 0.1;
+            let timeLeft = TIME_LIMIT - timeElapsed;
+            
+            if (timeLeft <= 0) {
+                timeLeft = 0;
+                clearInterval(timerInterval);
+                timerText.innerText = "Time's up! 1 Damage.";
+            }
+
+            const percentage = (timeLeft / TIME_LIMIT) * 100;
+            timerBar.style.width = `${percentage}%`;
+            
+            if (timeElapsed <= 7) { 
+                timerBar.style.backgroundColor = 'var(--hp-green)';
+                timerText.innerText = "Fast Answer = 3 Damage!";
+            } else if (timeElapsed <= 14) { 
+                timerBar.style.backgroundColor = 'var(--hp-yellow)';
+                timerText.innerText = "Good Speed = 2 Damage!";
+            } else {
+                timerBar.style.backgroundColor = 'var(--hp-red)';
+                if(timeLeft > 0) timerText.innerText = "Slow Answer = 1 Damage!";
+            }
+
+        }, 100);
+    }
+
+    function getSmartHint(questionText) {
+        if (questionText.includes("kg") || questionText.includes("g")) {
+            if (questionText.includes("weighs about") || questionText.includes("heaviest")) return "Hint: Think about how heavy this object is in real life. 1 kg is about the weight of 2 bags of sugar.";
+            if (questionText.includes("mark") || questionText.includes("scale")) return "Hint: Pay attention to what each small or large marking on the scale represents.";
+            return "Hint: Remember the conversion 1 kg = 1000 g.";
+        }
+        return "Hint: Convert the weights to the same unit (e.g., all to grams) before calculating.";
+    }
+
+    function loadNextQuestion() {
+        currentAttempts = 0;
+        document.getElementById('hint-zone').style.display = 'none';
+
+        if (normalQuestions.length === 0 && hardQuestions.length === 0) {
+            triggerVictory(); return;
+        }
+
+        if (isLegendaryFight && hardQuestions.length > 0) {
+            currentQuestion = hardQuestions.pop();
+        } else if (normalQuestions.length > 0) {
+            currentQuestion = normalQuestions.pop();
+        } else {
+            currentQuestion = hardQuestions.pop();
+        }
+
+        let qZone = document.getElementById('question-zone');
+        let qHTML = currentQuestion.q;
+        
+        if(isLegendaryFight) {
+            qZone.innerHTML = `<span style="color:red;">${qHTML}</span>`;
+        } else {
+            qZone.innerHTML = qHTML;
+        }
+
+        let answers = [
+            { text: currentQuestion.correct, isCorrect: true },
+            { text: currentQuestion.wrongs[0], isCorrect: false },
+            { text: currentQuestion.wrongs[1], isCorrect: false },
+            { text: currentQuestion.wrongs[2], isCorrect: false }
+        ].sort(() => Math.random() - 0.5);
+
+        const answersZone = document.getElementById('answers-zone');
+        answersZone.innerHTML = '';
+        answers.forEach((ans, index) => {
+            const btn = document.createElement('button');
+            btn.className = 'answer-btn';
+            btn.id = `ans-btn-${index}`;
+            btn.innerText = ans.text;
+            btn.onclick = () => handleAnswer(ans.isCorrect, btn);
+            answersZone.appendChild(btn);
+        });
+        
+        startTimer();
+    }
+
+    function handleAnswer(isCorrect, btnElement) {
+        clearInterval(timerInterval);
+
+        if (isCorrect) {
+            document.querySelectorAll('.answer-btn').forEach(b => b.disabled = true);
+            let dmg = 1;
+            
+            if (currentAttempts === 0) {
+                if (timeElapsed <= 7) dmg = 3; 
+                else if (timeElapsed <= 14) dmg = 2; 
+            } else {
+                dmg = 1;
+                document.getElementById('hint-zone').style.display = 'none';
+            }
+
+            logMsg(`Correct! Dealt ${dmg} damage!`);
+            triggerDamage('opponent', dmg);
+
+        } else {
+            currentAttempts++;
+            
+            if (currentAttempts === 1) {
+                // First miss: deduct player HP immediately
+                let dmgToPlayer = isLegendaryFight ? 2 : 1; 
+                logMsg(`Wrong! The opponent attacked, you took ${dmgToPlayer} damage! Check the hint and try again, or run away!`);
+                
+                triggerDamage('player', dmgToPlayer);
+
+                // Stop if the player fainted
+                if (playerHP <= 0) return; 
+                
+                let hintZone = document.getElementById('hint-zone');
+                hintZone.innerText = getSmartHint(currentQuestion.q);
+                hintZone.style.display = 'block';
+
+                btnElement.disabled = true;
+                btnElement.classList.add('wrong-answer');
+
+                document.getElementById('timer-text').innerText = "Second Chance: Max 1 Damage.";
+                document.getElementById('timer-bar').style.backgroundColor = '#95a5a6';
+
+                const answersZone = document.getElementById('answers-zone');
+                let skipBtn = document.createElement('button');
+                skipBtn.className = 'answer-btn skip-btn';
+                skipBtn.innerText = "Run away to save HP";
+                skipBtn.onclick = () => escapeBattle();
+                answersZone.appendChild(skipBtn);
+
+            } else {
+                // Second miss: deduct player HP again
+                document.querySelectorAll('.answer-btn').forEach(b => b.disabled = true);
+                document.getElementById('hint-zone').style.display = 'none';
+                
+                let damageTaken = isLegendaryFight ? 2 : 1;
+                logMsg(`Wrong again! The opponent attacked again, you took ${damageTaken} damage!`);
+                triggerDamage('player', damageTaken);
+            }
+        }
+    }
+
+    function escapeBattle() {
+        clearInterval(timerInterval);
+        document.querySelectorAll('.answer-btn').forEach(b => b.disabled = true);
+        document.getElementById('hint-zone').style.display = 'none';
+        
+        logMsg("Ran away successfully! Returning to base...");
+
+        if (currentQuestion.q.includes("[BOSS]")) {
+            hardQuestions.push(currentQuestion);
+        } else {
+            normalQuestions.push(currentQuestion);
+        }
+
+        if (currentOpponent.type === 'legendary') {
+            legendaryWilds.push(currentOpponent.species);
+        } else {
+            normalWilds.push(currentOpponent.species);
+        }
+
+        setTimeout(() => {
+            renderCollection();
+            switchScreen('collection-screen');
+        }, 1200);
+    }
+
+    function triggerDamage(target, amount) {
+        const spriteId = target === 'player' ? 'player-sprite' : 'opp-sprite';
+        const el = document.getElementById(spriteId);
+        
+        if (target === 'player') { 
+            sfx.hit(); 
+            playerHP = Math.max(0, playerHP - amount); 
+            let activePoke = collection.find(p => p.id === activePlayerId);
+            activePoke.hp = playerHP;
+        } else { 
+            if(amount > 1) sfx.attackFast(); else sfx.attackSlow();
+            oppHP = Math.max(0, oppHP - amount); 
+        }
+
+        el.classList.add('damage-blink');
+        document.getElementById('game-container').classList.add('shake');
+        
+        updateBattleUI();
+
+        setTimeout(() => {
+            el.classList.remove('damage-blink');
+            document.getElementById('game-container').classList.remove('shake');
+            
+            // Check battle status after each damage tick
+            checkBattleEnd();
+        }, 600);
+    }
+
+    function checkBattleEnd() {
+        if (playerHP <= 0) {
+            loseBattle();
+        } else if (oppHP <= 0) {
+            winBattle();
+        } else {
+            // If no one is dead, and the opponent just took damage (meaning correct answer), load the next question
+            // If the player took damage, wait for their second attempt or load the next question if it was the 2nd attempt
+            if (oppHP > 0 && playerHP > 0 && currentAttempts === 0) {
+                 setTimeout(loadNextQuestion, 1000);
+            } else if (currentAttempts === 2) {
+                 setTimeout(loadNextQuestion, 1000);
+            }
+        }
+    }
+
+    function updateBattleUI() {
+        const activePokemon = collection.find(p => p.id === activePlayerId);
+        const pData = speciesData[activePokemon.species] || {id: 25};
+        const oData = speciesData[currentOpponent.species] || {id: 150};
+
+        document.getElementById('player-name').innerText = activePokemon.species;
+        document.getElementById('player-sprite').src = getSpriteUrl(pData.id);
+        updateHPBar('player', playerHP, maxPlayerHP);
+
+        document.getElementById('opp-name').innerText = currentOpponent.species;
+        document.getElementById('opp-sprite').src = getSpriteUrl(oData.id);
+        updateHPBar('opp', oppHP, maxOppHP);
+    }
+
+    function updateHPBar(prefix, current, max) {
+        const bar = document.getElementById(`${prefix}-hp`);
+        const text = document.getElementById(`${prefix}-hp-text`);
+        const percentage = (current / max) * 100;
+        bar.style.width = `${percentage}%`;
+        text.innerText = `${current}/${max}`;
+        
+        if(percentage > 50) bar.style.backgroundColor = 'var(--hp-green)';
+        else if(percentage > 20) bar.style.backgroundColor = 'var(--hp-yellow)';
+        else bar.style.backgroundColor = 'var(--hp-red)';
+    }
+
+    function logMsg(msg) { 
+        let logEl = document.getElementById('battle-log');
+        logEl.innerHTML = msg; 
+        if(isLegendaryFight && msg.includes("WARNING")) logEl.className = "log boss-intro";
+        else logEl.className = "log";
+    }
+
+    function winBattle() {
+        sfx.win();
+        const activePokemon = collection.find(p => p.id === activePlayerId);
+        activePokemon.wins++;
+        let alertMsg = `You caught ${currentOpponent.species}!\n`;
+        
+        let caughtMaxHp = currentOpponent.type === 'legendary' ? 4 : 3;
+        collection.push({ 
+            id: nextId++, 
+            species: currentOpponent.species, 
+            wins: 0, 
+            status: 'active', 
+            hp: caughtMaxHp, 
+            maxHp: caughtMaxHp 
+        });
+
+        const pData = speciesData[activePokemon.species] || {};
+        
+        if (pData.next && activePokemon.wins >= pData.winsNeeded) {
+            setTimeout(sfx.evolve, 1000);
+            const oldSpecies = activePokemon.species;
+            activePokemon.species = pData.next;
+            activePokemon.wins = 0;
+            
+            activePokemon.maxHp += 1;
+            activePokemon.hp += 1;
+            
+            if(pData.type === 'legendary') {
+                alertMsg += `\nIncredible! Your ${oldSpecies} is reacting to the Mega Stone...\nIt Mega Evolved into ${activePokemon.species}! (Max HP +1!)`;
+            } else {
+                alertMsg += `\nWhat? Your ${oldSpecies} is evolving...\nIt evolved into ${activePokemon.species}! (Max HP +1!)`;
+            }
+        }
+
+        setTimeout(() => {
+            let totalQ = normalQuestions.length + hardQuestions.length;
+            if (totalQ === 0) {
+                triggerVictory();
+            } else {
+                alert(alertMsg);
+                renderCollection();
+                switchScreen('collection-screen');
+            }
+        }, 800);
+    }
+
+    function loseBattle() {
+        sfx.faint();
+        
+        const activePokemon = collection.find(p => p.id === activePlayerId);
+        activePokemon.status = 'fainted';
+        
+        if (currentOpponent.type === 'legendary') legendaryWilds.push(currentOpponent.species);
+        else normalWilds.push(currentOpponent.species);
+
+        let allFainted = collection.every(p => p.status === 'fainted');
+
+        setTimeout(() => {
+            if (allFainted) {
+                switchScreen('game-over-screen');
+            } else {
+                alert(`Oh no! Your ${activePokemon.species} fainted! You retreated to the base.`);
+                renderCollection();
+                switchScreen('collection-screen');
+            }
+        }, 800);
+    }
+
+    function triggerVictory() {
+        const grid = document.getElementById('hof-grid');
+        grid.innerHTML = '';
+        
+        collection.forEach(p => {
+            const data = speciesData[p.species] || {id: 25};
+            const div = document.createElement('div');
+            div.className = `collection-item`;
+            if(data.type === 'legendary') div.style.borderColor = '#e67e22';
+            if(p.status === 'fainted') {
+                div.classList.add('fainted');
+                div.innerHTML = `
+                    <img src="${getSpriteUrl(data.id)}" alt="${p.species}">
+                    <div style="font-size: 0.75rem;"><strong>${p.species}</strong></div>
+                    <div class="fainted-text">Fell in battle</div>
+                `;
+            } else {
+                div.innerHTML = `
+                    <img src="${getSpriteUrl(data.id)}" alt="${p.species}">
+                    <div style="font-size: 0.75rem;"><strong>${p.species}</strong></div>
+                    <div style="font-size: 0.7rem; color: #2ecc71; font-weight: bold;">Survivor (${p.hp} HP)</div>
+                `;
+            }
+            grid.appendChild(div);
+        });
+
+        switchScreen('victory-screen');
+    }
+
+    renderCollection();
+
+</script>
+</body>
+</html>
